@@ -112,7 +112,7 @@ async fn run() {
             )
             .service(web::resource("/").to(hello))
     })
-    .bind("127.0.0.1:3000")
+    .bind("0.0.0.0:3000")
     .unwrap()
     .run()
     .await
