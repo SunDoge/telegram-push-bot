@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use once_cell::sync::Lazy;
 use ring::hmac;
 use serde::{Deserialize, Serialize};
@@ -8,16 +8,21 @@ use std::io::prelude::*;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommand;
 
-static CONFIG: Lazy<Config> = Lazy::new(|| {
-    let config = load_config();
-    config
-});
+// static CONFIG: Lazy<Config> = Lazy::new(|| {
+//     let config = load_config();
+//     config
+// });
+const TELOXIDE_TOKEN: &str = "TELOXIDE_TOKEN";
 
 static KEY: Lazy<hmac::Key> = Lazy::new(|| {
     // let config = load_config();
-    let key = hmac::Key::new(hmac::HMAC_SHA256, CONFIG.telegram.token.as_bytes());
+    let token = std::env::var(TELOXIDE_TOKEN).unwrap();
+    let key = hmac::Key::new(hmac::HMAC_SHA256, token.as_bytes());
     key
 });
+
+static HOSTNAME: Lazy<String> =
+    Lazy::new(|| hostname::get().unwrap().to_string_lossy().to_string());
 
 #[derive(BotCommand, Debug)]
 #[command(rename = "lowercase", description = "These commands are supported:")]
@@ -105,6 +110,7 @@ async fn run() {
                 web::resource("/chatid/{chat_id}/sign/{sign}/text")
                     .route(web::post().to(send_text)),
             )
+            .service(web::resource("/").to(hello))
     })
     .bind("127.0.0.1:3000")
     .unwrap()
@@ -134,6 +140,10 @@ async fn send_text(
     }
 }
 
+async fn hello() -> impl Responder {
+    "Hello".to_string()
+}
+
 async fn answer(cx: UpdateWithCx<Message>, command: Command) -> ResponseResult<()> {
     match command {
         Command::Help => cx.answer(Command::descriptions()).send().await?,
@@ -146,8 +156,8 @@ async fn answer(cx: UpdateWithCx<Message>, command: Command) -> ResponseResult<(
             let chat_id = cx.update.chat_id();
             let sign = sign_chat_id(chat_id);
             cx.answer(format!(
-                "Push url: \nhttp://127.0.0.1:3000/chatid/{}/sign/{}/text",
-                chat_id, sign
+                "Push url: \nhttps://{}:3000/chatid/{}/sign/{}/text",
+                *HOSTNAME, chat_id, sign
             ))
             .send()
             .await?
