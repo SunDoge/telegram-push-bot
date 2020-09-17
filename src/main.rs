@@ -13,6 +13,7 @@ use teloxide::utils::command::BotCommand;
 //     config
 // });
 const TELOXIDE_TOKEN: &str = "TELOXIDE_TOKEN";
+const TELOXIDE_HOST: &str = "TELOXIDE_HOST";
 
 static KEY: Lazy<hmac::Key> = Lazy::new(|| {
     // let config = load_config();
@@ -21,8 +22,8 @@ static KEY: Lazy<hmac::Key> = Lazy::new(|| {
     key
 });
 
-static HOSTNAME: Lazy<String> =
-    Lazy::new(|| hostname::get().unwrap().to_string_lossy().to_string());
+static HOST: Lazy<String> =
+    Lazy::new(|| std::env::var(TELOXIDE_HOST).unwrap_or("http://127.0.0.1".to_string()));
 
 #[derive(BotCommand, Debug)]
 #[command(rename = "lowercase", description = "These commands are supported:")]
@@ -156,8 +157,8 @@ async fn answer(cx: UpdateWithCx<Message>, command: Command) -> ResponseResult<(
             let chat_id = cx.update.chat_id();
             let sign = sign_chat_id(chat_id);
             cx.answer(format!(
-                "Push url: \nhttps://{}:3000/chatid/{}/sign/{}/text",
-                *HOSTNAME, chat_id, sign
+                "Push url: \n{}:3000/chatid/{}/sign/{}/text",
+                *HOST, chat_id, sign
             ))
             .send()
             .await?
